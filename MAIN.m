@@ -1,6 +1,6 @@
 clc; clear; close all;
 % problem inputs
-nel=[2,2]; npe=[2,2];
+nel=[8,8]; npe=[2,2];
 nx=nel+1;
 xmin=[0,0];xmax=[1,1];
 Tmax =10.5;
@@ -84,9 +84,7 @@ while(t<=Tmax)
 %         vty = - dt/rhoWater*gpy;
         vnew(node)    = vstar(node)    - dt/rhoWater*gpx;
         vnew(node+Nn) = vstar(node+Nn) - dt/rhoWater*gpy;
-    end
-    
-
+    end 
     vnew(vSupportDOF) = vBC(vSupportDOF);   
     %%% end  
    
@@ -129,12 +127,10 @@ while(t<=Tmax)
             tau      = 2*mu*(ddev); 
             fgp      = tau*gradN*lx*ly/4;
             
-            accn(iv)   = accn(iv)   - fgp(1,:)';
-            accn(iv+Nn)= accn(iv+Nn)- fgp(2,:)';
+            accn(iv)   = accn(iv)   - fgp(1,:)'./mv(iv);
+            accn(iv+Nn)= accn(iv+Nn)- fgp(2,:)'./mv(iv);
         end
-    end 
-   
-    
+    end
     %%% 
 
     %%% Map to points
