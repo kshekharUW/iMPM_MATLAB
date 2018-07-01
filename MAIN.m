@@ -1,6 +1,6 @@
 clc; clear; close all;
 % problem inputs
-nel=[8,8]; npe=[2,2];
+nel=[2,2]; npe=[2,2];
 nx=nel+1;
 xmin=[0,0];xmax=[1,1];
 Tmax =10.5;
@@ -37,7 +37,7 @@ t=0; counter = 0; dt=dt0;
 [mv,v]=maptogridIC(Nn,Ne,icon,xpn,dx,dt,nep,np,mp,vp,sigp,pp,rho0p,gravity,material,freeDOFs,nbot,ntop,nleft,nright,ntopright);
 nodePressure= zeros(Nn,1);
 b=zeros(2*Nn,1); 
-vstar=zeros(2*Nn,1); 
+vstar=vBC; 
 vnew =zeros(2*Nn,1); 
 
 picCounter=0;
@@ -56,32 +56,37 @@ while(t<=Tmax)
     t=t+dt; fprintf('time=%f\n',t);    
 
     %%% Solve pressure Poisson's equation 
-    prhs = -rhoWater/dt * DivM*vstar + qn;
-    nodePressure(pFreeDOF) = L(pFreeDOF, pFreeDOF)\...
-        (prhs(pFreeDOF)-L(pFreeDOF,pSupportDOF)*pressureBC(pSupportDOF));
-    nodePressure(pSupportDOF) = pressureBC(pSupportDOF);
+%     prhs = -rhoWater/dt * DivM*vstar + qn;
+%     nodePressure(pFreeDOF) = L(pFreeDOF, pFreeDOF)\...
+%         (prhs(pFreeDOF)-L(pFreeDOF,pSupportDOF)*pressureBC(pSupportDOF));
+%     nodePressure(pSupportDOF) = pressureBC(pSupportDOF);
+    
+    L(pSupportDOF,pSupportDOF)=1e20;
+    prhs = -rhoWater/dt * DivM*vstar + qn;  
+    prhs(pSupportDOF)=0;
+    nodePressure = L\prhs;
     %%% end
     
     %%% Calculate new velocity correcting for pressure gradient and apply BC        
-    for i=1:Ne
-        iv=icon(:,i);
-        for j=1:4
-           node = iv(j); 
-           if ismember(node,[nleft,nright])
-               gpx=0;
-           else
-               gpx = (nodePressure(node+1)-nodePressure(node-1))/(2*lx);
-           end
-           
-           if ismember(node,[ntop,nbot])
-               gpy=0;
-           else
-               gpy = (nodePressure(node+nx(1))-nodePressure(node-nx(1)))/(2*ly);
-           end
-           vnew(node)    = vstar(node)    - dt/rhoWater*gpx;   
-           vnew(node+Nn) = vstar(node+Nn) - dt/rhoWater*gpy;
+    for node=1:Nn
+        if ismember(node,[nleft,nright])
+            gpx=0;
+        else
+            gpx = (nodePressure(node+1)-nodePressure(node-1))/(2*lx);
         end
+
+        if ismember(node,[ntop,nbot])
+            gpy=0;
+        else
+            gpy = (nodePressure(node+nx(1))-nodePressure(node-nx(1)))/(2*ly);
+        end
+%         vtx = - dt/rhoWater*gpx;
+%         vty = - dt/rhoWater*gpy;
+        vnew(node)    = vstar(node)    - dt/rhoWater*gpx;
+        vnew(node+Nn) = vstar(node+Nn) - dt/rhoWater*gpy;
     end
+    
+
     vnew(vSupportDOF) = vBC(vSupportDOF);   
     %%% end  
    
@@ -89,7 +94,7 @@ while(t<=Tmax)
     storeInterval=dt;    
     if (mod(t-dt,storeInterval)<1e-8 || storeInterval-mod(t-dt,storeInterval)<1e-8)
         picCounter=picCounter+1;
-        plotProj( 1,Nn,xp,vp,x,sigp,xmin,xmax,t-dt,nx,nodePressure,vnew,picCounter,nbot,ntop,nleft,nright,1,0 );
+        plotProj( 1,Nn,xp,vp,x,sigp,xmin,xmax,t-dt,nx,nodePressure,vnew,picCounter,nbot,ntop,nleft,nright,0,0 );
         t;
         clf
     end
